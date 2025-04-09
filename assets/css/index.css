@@ -1,0 +1,108 @@
+/* Reset Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: var(--background);
+    color: var(--text);
+}
+
+/* Root Variables */
+:root {
+    --primary: #1B3B6F;
+    --accent1: #8EC5FC;
+    --accent2: #C77DFF;
+    --background: #1A1A1A;
+    --text: #FFFFFF;
+}
+
+/* Header Styles */
+.header-style-1 {
+    background-color: var(--primary);
+}
+
+.top-header,
+.main-header,
+.menu-bar {
+    background-color: var(--primary);
+    color: var(--text);
+}
+
+.nav-tabs {
+    background-color: var(--accent1);
+}
+
+.nav-tabs li a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+/* Hero Slider */
+.homepage-slider3 .item {
+    background-size: cover;
+    background-position: center;
+    height: 300px;
+}
+
+/* Promotions Section */
+.info-boxes {
+    display: flex;
+    justify-content: space-around;
+    padding: 20px;
+}
+
+.info-box {
+    background-color: var(--accent2);
+    color: var(--text);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.info-box i {
+    font-size: 30px;
+    margin-bottom: 10px;
+}
+
+/* Product Listings */
+.product-slider {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding: 20px;
+}
+
+.product-card {
+    background-color: var(--background);
+    color: var(--text);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    min-width: 250px;
+}
+
+.product-card img {
+    width: 100%;
+    height: auto;
+    margin-bottom: 10px;
+}
+
+.product-card h3 {
+    margin-bottom: 5px;
+}
+
+.product-card .price {
+    font-weight: bold;
+}
+
+/* Footer Styles */
+footer {
+    background-color: var(--primary);
+    color: var(--text);
+    text-align: center;
+    padding: 10px;
+}
