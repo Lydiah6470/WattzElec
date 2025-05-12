@@ -12,11 +12,11 @@ $product_id = isset($_GET['product_id']) ? intval($_GET['product_id']) : 0;
 
 // Fetch product details
 $stmt = $conn->prepare("
-    SELECT p.*, c.id AS category_id, s.id AS subcategory_id, c.name AS category_name, s.name AS subcategory_name
+    SELECT p.*, c.category_id, s.subcategory_id, c.name AS category_name, s.name AS subcategory_name
     FROM products p
-    JOIN subcategories s ON p.subcategory_id = s.id
-    JOIN category c ON s.category_id = c.id
-    WHERE p.id = ?
+    JOIN subcategories s ON p.subcategory_id = s.subcategory_id
+    JOIN category c ON s.category_id = c.category_id
+    WHERE p.product_id = ?
 ");
 $stmt->execute([$product_id]);
 $product = $stmt->fetch();
@@ -26,8 +26,8 @@ if (!$product) {
 }
 
 // Fetch categories and subcategories
-$categories = $conn->query("SELECT * FROM category")->fetchAll();
-$subcategories = $conn->query("SELECT * FROM subcategories")->fetchAll();
+$categories = $conn->query("SELECT category_id, name FROM category ORDER BY name")->fetchAll();
+$subcategories = $conn->query("SELECT subcategory_id, name, category_id FROM subcategories ORDER BY name")->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Collect and sanitize input
@@ -46,9 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Initialize image URLs with existing values
     $image_urls = [
-        'image_url' => $_POST['existing_image_1'],
-        'image_url_2' => $_POST['existing_image_2'],
-        'image_url_3' => $_POST['existing_image_3'],
+        'image_1' => $_POST['existing_image_1'],
+        'image_2' => $_POST['existing_image_2'],
+        'image_3' => $_POST['existing_image_3'],
     ];
 
     // Process each image field
@@ -56,24 +56,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($image_fields as $index => $field) {
         if (isset($_FILES[$field]) && $_FILES[$field]['size'] > 0) { // If a new image is uploaded
             $target_file = $target_dir . basename($_FILES[$field]["name"]);
-            $image_urls["image_url" . ($index > 0 ? "_{$index}" : "")] = "http://localhost/WattzElec/uploads/" . basename($_FILES[$field]["name"]);
+            $image_urls[$field] = "uploads/" . basename($_FILES[$field]["name"]);
 
             move_uploaded_file($_FILES[$field]["tmp_name"], $target_file);
         }
     }
 
     // Extract image URLs
-    $image_url = $image_urls['image_url'];
-    $image_url_2 = $image_urls['image_url_2'];
-    $image_url_3 = $image_urls['image_url_3'];
+    $image_1 = $image_urls['image_1'];
+    $image_2 = $image_urls['image_2'];
+    $image_3 = $image_urls['image_3'];
 
     // Update product details in the database
     $stmt = $conn->prepare("
         UPDATE products
-        SET name=?, description=?, price=?, discount=?, stock=?, subcategory_id=?, image_url=?, image_url_2=?, image_url_3=?
-        WHERE id=?
+        SET name=?, description=?, price=?, discount=?, stock_quantity=?, subcategory_id=?, image_1=?, image_2=?, image_3=?
+        WHERE product_id=?
     ");
-    $stmt->execute([$name, $description, $price, $discount, $stock, $subcategory_id, $image_url, $image_url_2, $image_url_3, $product_id]);
+    $stmt->execute([$name, $description, $price, $discount, $stock, $subcategory_id, $image_1, $image_2, $image_3, $product_id]);
 
     header("Location: products.php");
     exit;
@@ -239,23 +239,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <form method="POST" enctype="multipart/form-data" class="product-form">
         <!-- Hidden fields for existing image URLs -->
-        <input type="hidden" name="existing_image_1" value="<?php echo htmlspecialchars($product['image_url']); ?>">
-        <input type="hidden" name="existing_image_2" value="<?php echo htmlspecialchars($product['image_url_2']); ?>">
-        <input type="hidden" name="existing_image_3" value="<?php echo htmlspecialchars($product['image_url_3']); ?>">
+        <input type="hidden" name="existing_image_1" value="<?php echo htmlspecialchars($product['image_1'] ?? ''); ?>">
+        <input type="hidden" name="existing_image_2" value="<?php echo htmlspecialchars($product['image_2'] ?? ''); ?>">
+        <input type="hidden" name="existing_image_3" value="<?php echo htmlspecialchars($product['image_3'] ?? ''); ?>">
 
-        <!-- Current Images Preview -->
-        <div class="form-group full-width">
-            <label>Current Images</label>
-            <div class="preview-images">
-                <img src="<?php echo htmlspecialchars($product['image_url']); ?>" alt="Main Image" class="preview-image">
-                <?php if ($product['image_url_2']): ?>
-                    <img src="<?php echo htmlspecialchars($product['image_url_2']); ?>" alt="Secondary Image" class="preview-image">
-                <?php endif; ?>
-                <?php if ($product['image_url_3']): ?>
-                    <img src="<?php echo htmlspecialchars($product['image_url_3']); ?>" alt="Additional Image" class="preview-image">
-                <?php endif; ?>
-            </div>
-        </div>
+
 
         <div class="form-group">
             <label for="name">Product Name</label>
@@ -269,12 +257,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="form-group">
             <label for="discount">Discount (%)</label>
-            <input type="number" step="0.01" name="discount" id="discount" value="<?php echo htmlspecialchars($product['discount']); ?>">
+            <input type="number" step="0.01" name="discount" id="discount" value="<?php echo htmlspecialchars($product['discount'] ?? 0); ?>">
         </div>
 
         <div class="form-group">
             <label for="stock">Stock Quantity</label>
-            <input type="number" name="stock" id="stock" min="0" value="<?php echo htmlspecialchars($product['stock']); ?>" required>
+            <input type="number" name="stock" id="stock" min="0" value="<?php echo htmlspecialchars($product['stock_quantity'] ?? 0); ?>" required>
         </div>
 
         <div class="form-group">
@@ -282,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <select id="category" name="category" onchange="loadSubcategories(this.value)" required>
                 <option value="">Select Category</option>
                 <?php foreach ($categories as $category): ?>
-                    <option value="<?php echo $category['id']; ?>" <?php echo ($category['id'] == $product['category_id']) ? 'selected' : ''; ?>>
+                    <option value="<?php echo $category['category_id']; ?>" <?php echo ($category['category_id'] == $product['category_id']) ? 'selected' : ''; ?>>
                         <?php echo htmlspecialchars($category['name']); ?>
                     </option>
                 <?php endforeach; ?>
@@ -294,7 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <select id="subcategory" name="subcategory_id" required>
                 <option value="">Select Subcategory</option>
                 <?php foreach ($subcategories as $subcategory): ?>
-                    <option value="<?php echo $subcategory['id']; ?>" <?php echo ($subcategory['id'] == $product['subcategory_id']) ? 'selected' : ''; ?>>
+                    <option value="<?php echo $subcategory['subcategory_id']; ?>" <?php echo ($subcategory['subcategory_id'] == $product['subcategory_id']) ? 'selected' : ''; ?>>
                         <?php echo htmlspecialchars($subcategory['name']); ?>
                     </option>
                 <?php endforeach; ?>
@@ -328,24 +316,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <script>
 function loadSubcategories(categoryId) {
-    const subcategoryDropdown = document.getElementById('subcategory');
-    subcategoryDropdown.innerHTML = '<option value="">Loading...</option>';
+    const subcategorySelect = document.getElementById('subcategory');
+    subcategorySelect.innerHTML = '<option value="">Select Subcategory</option>';
 
-    fetch(`get_subcategories.php?category_id=${categoryId}`)
-        .then(response => response.json())
-        .then(data => {
-            subcategoryDropdown.innerHTML = '<option value="">Select Subcategory</option>';
-            data.forEach(subcategory => {
-                const option = document.createElement('option');
-                option.value = subcategory.id;
-                option.textContent = subcategory.name;
-                subcategoryDropdown.appendChild(option);
-            });
-        })
-        .catch(error => {
-            subcategoryDropdown.innerHTML = '<option value="">Error loading subcategories</option>';
-        });
+    if (!categoryId) return;
+
+    // Convert categoryId to string for comparison
+    categoryId = categoryId.toString();
+
+    // Filter subcategories based on selected category
+    const subcategories = <?php echo json_encode($subcategories); ?>;
+    const filteredSubcategories = subcategories.filter(sub => sub.category_id.toString() === categoryId);
+
+    // Add filtered subcategories to select
+    filteredSubcategories.forEach(sub => {
+        const option = document.createElement('option');
+        option.value = sub.subcategory_id;
+        option.textContent = sub.name;
+        option.selected = sub.subcategory_id.toString() === '<?php echo $product['subcategory_id']; ?>';
+        subcategorySelect.appendChild(option);
+    });
 }
+
+// Initialize subcategories on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const categorySelect = document.getElementById('category');
+    if (categorySelect.value) {
+        loadSubcategories(categorySelect.value);
+    }
+});
 </script>
 
 <?php include 'includes/footer.php'; ?>

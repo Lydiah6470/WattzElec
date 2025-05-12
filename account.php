@@ -8,17 +8,17 @@ if (!isset($_SESSION['user_id']) || $_SESSION['is_admin'] == 1) {
 }
 
 // Get user data
-$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+$stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
 $stmt->execute([$_SESSION['user_id']]);
-$user = $stmt->fetch();
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
-    $name = $_POST['name'];
+    $username = $_POST['username'];
     $email = $_POST['email'];
     
-    $stmt = $conn->prepare("UPDATE users SET name = ?, email = ? WHERE id = ?");
-    $stmt->execute([$name, $email, $_SESSION['user_id']]);
+    $stmt = $conn->prepare("UPDATE users SET username = ?, email = ? WHERE user_id = ?");
+    $stmt->execute([$username, $email, $_SESSION['user_id']]);
     $_SESSION['success'] = "Profile updated successfully";
     header("Location: account.php");
     exit();
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
     
     if (password_verify($current_password, $user['password'])) {
         $new_hash = password_hash($new_password, PASSWORD_DEFAULT);
-        $stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+        $stmt = $conn->prepare("UPDATE users SET password = ? WHERE user_id = ?");
         $stmt->execute([$new_hash, $_SESSION['user_id']]);
         $_SESSION['success'] = "Password changed successfully";
     } else {
@@ -51,11 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
             <div class="card mb-4" style="background-color: #1a1a1a;">
                 <div class="card-body text-center">
                     <i class="fas fa-user-circle fa-5x mb-3" style="color: var(--accent1);"></i>
-                    <h5 class="card-title text-white"><?= htmlspecialchars($user['name']) ?></h5>
-                    <p class="card-text text-muted"><?= htmlspecialchars($user['email']) ?></p>
-                    <p class="text-<?= $user['verified'] ? 'success' : 'danger' ?>">
-                        <?= $user['verified'] ? 'Verified' : 'Unverified' ?>
-                    </p>
+                    <h5 class="card-title text-white"><?= htmlspecialchars($user['username'] ?? '') ?></h5>
+                    <p class="card-text text-light"><?= htmlspecialchars($user['email'] ?? '') ?></p>
                     <a href="logout.php" class="btn btn-danger btn-sm">Logout</a>
                 </div>
             </div>
@@ -79,14 +76,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
                 <div class="card-body">
                     <form method="POST">
                         <div class="form-group mb-3">
-                            <label class="text-muted">Full Name</label>
-                            <input type="text" name="name" class="form-control" 
-                                   value="<?= htmlspecialchars($user['name']) ?>" required>
+                            <label class="text-light">Full Name</label>
+                            <input type="text" name="username" class="form-control" 
+                                   value="<?= htmlspecialchars($user['username'] ?? '') ?>" required>
                         </div>
                         <div class="form-group mb-3">
-                            <label class="text-muted">Email Address</label>
+                            <label class="text-light">Email Address</label>
                             <input type="email" name="email" class="form-control" 
-                                   value="<?= htmlspecialchars($user['email']) ?>" required>
+                                   value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
                         </div>
                         <button type="submit" name="update_profile" class="btn btn-primary">Update Profile</button>
                     </form>
@@ -108,15 +105,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
                         </div>
                         <button type="submit" name="change_password" class="btn btn-primary">Change Password</button>
                     </form>
-                </div>
-            </div>
-
-            <!-- Order History -->
-            <div class="card mb-4" style="background-color: #1a1a1a;">
-                <div class="card-header text-white">Order History</div>
-                <div class="card-body">
-                    <!-- Add order history implementation here -->
-                    <p class="text-muted">Your order history will appear here</p>
                 </div>
             </div>
         </div>

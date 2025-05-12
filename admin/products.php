@@ -1,7 +1,7 @@
 <?php
 session_start();
+require_once 'includes/db.php';
 include 'includes/header.php';
-include 'includes/db.php';
 
 // Redirect to login if the user is not logged in or is not an admin
 // if (!isset($_SESSION['user_id']) || $_SESSION['is_admin'] != 1) {
@@ -18,17 +18,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_product'])) {
     $success_message = "Product deleted successfully.";
 }
 
-// Fetch all products with category and subcategory details
+// Get subcategory filter
+$subcategory_id = isset($_GET['subcategory']) ? (int)$_GET['subcategory'] : 0;
+
+// Get subcategory name if filter is active
+$subcategory_name = '';
+if ($subcategory_id > 0) {
+    $stmt = $conn->prepare("SELECT name FROM subcategories WHERE subcategory_id = ?");
+    $stmt->execute([$subcategory_id]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $subcategory_name = $result ? $result['name'] : '';
+}
+
+// Fetch products with category and subcategory details
 $query = "
-    SELECT p.id, p.name, p.price, p.discount, p.stock, p.image_url, p.image_url_2, p.image_url_3,
-           c.name AS category_name, s.name AS subcategory_name
+    SELECT p.product_id, p.name, p.price, p.discount, 
+           ROUND(p.price - (p.price * p.discount / 100), 2) as discounted_price,
+           p.stock_quantity as stock, p.image_1,
+           c.name AS category_name, s.name AS subcategory_name,
+           p.status, p.featured
     FROM products p
-    JOIN subcategories s ON p.subcategory_id = s.id
-    JOIN category c ON s.category_id = c.id
-    ORDER BY p.id DESC
+    JOIN subcategories s ON p.subcategory_id = s.subcategory_id
+    JOIN category c ON s.category_id = c.category_id
 ";
+
+// Add subcategory filter if specified
+if ($subcategory_id > 0) {
+    $query .= " WHERE p.subcategory_id = ?";
+}
+
+$query .= " ORDER BY p.product_id DESC";
+
 $stmt = $conn->prepare($query);
-$stmt->execute();
+
+// Execute with or without subcategory parameter
+if ($subcategory_id > 0) {
+    $stmt->execute([$subcategory_id]);
+} else {
+    $stmt->execute();
+}
+
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Function to get stock status class
@@ -141,8 +170,11 @@ function getStockStatusClass($stock) {
 }
 
 .product-image {
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
     object-fit: cover;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -188,9 +220,75 @@ function getStockStatusClass($stock) {
     color: #856404;
 }
 
+.products-table td {
+    font-size: 0.95rem;
+    vertical-align: middle;
+}
+
+.products-table .category,
+.products-table .subcategory {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.products-table .price {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.products-table .stock {
+    font-size: 0.9rem;
+    color: #666;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.stock-warning {
+    color: var(--warning-color);
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
 .out-of-stock {
-    background-color: #f8d7da;
-    color: #721c24;
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.low-stock {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.in-stock {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.new-price {
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+.discount {
+    color: var(--danger-color);
+    font-weight: 500;
+}
+
+.products-table .status {
+    font-size: 0.9rem;
+}
+
+.products-table .status.status-in_stock {
+    color: #27ae60;
+}
+
+.products-table .status.status-out_of_stock {
+    color: #e74c3c;
+}
+
+.products-table .status.status-discontinued {
+    color: #95a5a6;
 }
 
 .action-buttons {
@@ -288,8 +386,20 @@ function getStockStatusClass($stock) {
 <div class="products-container">
     <div class="content-wrapper">
         <div class="page-header">
-            <h2 class="page-title">Manage Products</h2>
-            <a href="add_product.php" class="add-product-btn">Add New Product</a>
+            <div>
+                <h2 class="page-title">Manage Products</h2>
+                <?php if ($subcategory_name): ?>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="products.php">All Products</a></li>
+                        <li class="breadcrumb-item active" aria-current="page"><?= htmlspecialchars($subcategory_name) ?></li>
+                    </ol>
+                </nav>
+                <?php endif; ?>
+            </div>
+            <a href="add_product.php<?= $subcategory_id ? '?subcategory='.$subcategory_id : '' ?>" class="add-product-btn">
+                Add New Product
+            </a>
         </div>
 
         <?php if (isset($success_message)): ?>
@@ -307,9 +417,11 @@ function getStockStatusClass($stock) {
                             <th>Product Name</th>
                             <th>Category</th>
                             <th>Subcategory</th>
-                            <th>Price</th>
+                            <th>Marked Price</th>
                             <th>Discount</th>
-                            <th>Stock</th>
+                            <th>New Price</th>
+                            <th>Stock Level</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -317,49 +429,41 @@ function getStockStatusClass($stock) {
                         <?php foreach ($products as $product): ?>
                             <tr>
                                 <td>
-                                    <img src="<?php echo htmlspecialchars($product['image_url']); ?>" 
-                                         alt="<?php echo htmlspecialchars($product['name']); ?>" 
-                                         class="product-image">
+                                    <?php if ($product['image_1']): ?>
+                                        <img src="../<?php echo htmlspecialchars($product['image_1']); ?>" 
+                                             alt="<?php echo htmlspecialchars($product['name']); ?>" 
+                                             class="product-image">
+                                    <?php else: ?>
+                                        <div class="no-image">No Image</div>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <span class="product-name"><?php echo htmlspecialchars($product['name']); ?></span>
                                 </td>
-                                <td>
-                                    <span class="category-badge"><?php echo htmlspecialchars($product['category_name'] ?? 'No Category'); ?></span>
-                                </td>
-                                <td>
-                                    <span class="category-badge"><?php echo htmlspecialchars($product['subcategory_name'] ?? 'No Subcategory'); ?></span>
-                                </td>
-                                <td>
-                                    <span class="price">KSh <?php echo number_format($product['price'], 2); ?></span>
-                                </td>
-                                <td>
-                                    <?php if ($product['discount'] > 0): ?>
-                                        <span class="discount"><?php echo htmlspecialchars($product['discount']); ?>% OFF</span>
-                                    <?php else: ?>
-                                        <span class="text-muted">No Discount</span>
+                                <td class="category"><?php echo htmlspecialchars($product['category_name'] ?? 'No Category'); ?></td>
+                                <td class="subcategory"><?php echo htmlspecialchars($product['subcategory_name'] ?? 'No Subcategory'); ?></td>
+                                <td class="price">KSh <?php echo number_format($product['price'], 2); ?></td>
+                                <td class="discount"><?php echo $product['discount'] ? number_format($product['discount'], 2) . '%' : '-'; ?></td>
+                                <td class="price new-price"><?php echo $product['discount'] ? 'KSh ' . number_format($product['discounted_price'], 2) : '-'; ?></td>
+                                <td class="stock <?php echo getStockStatusClass($product['stock']); ?>">
+                                    <?php echo htmlspecialchars($product['stock']); ?> units
+                                    <?php if ($product['stock'] < 10): ?>
+                                        <span class="stock-warning">(Low Stock)</span>
                                     <?php endif; ?>
                                 </td>
-                                <td>
-                                    <span class="stock-badge <?php echo getStockStatusClass($product['stock']); ?>">
-                                        <?php echo htmlspecialchars($product['stock']); ?> units
-                                    </span>
+                                <td class="status status-<?php echo $product['status']; ?>">
+                                    <?php echo ucwords(str_replace('_', ' ', $product['status'])); ?>
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <a href="edit_product.php?product_id=<?php echo $product['id']; ?>" 
+                                        <a href="edit_product.php?product_id=<?php echo $product['product_id']; ?>" 
                                            class="btn btn-edit">
-                                            Edit
+                                            <i class="fas fa-edit"></i>
                                         </a>
-                                        <form method="POST" style="display: inline;">
-                                            <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
-                                            <button type="submit" 
-                                                    name="delete_product" 
-                                                    class="btn btn-delete"
-                                                    onclick="return confirm('Are you sure you want to delete this product?')">
-                                                Delete
-                                            </button>
-                                        </form>
+                                        <button onclick="deleteProduct(<?php echo $product['product_id']; ?>)" 
+                                                class="btn btn-delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

@@ -39,23 +39,64 @@ $otherProducts = getOtherProductsFromDatabase();
 
         /* Hero Section */
         .hero-section {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            padding: 4rem 0;
             margin-bottom: 3rem;
-            color: white;
-            border-radius: 0 0 2rem 2rem;
+            overflow: hidden;
         }
 
-        .hero-content {
-            text-align: center;
-            max-width: 800px;
-            margin: 0 auto;
+        .carousel-item {
+            height: 500px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
         }
 
-        .hero-content h1 {
-            font-size: 3rem;
+        .carousel-item img {
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.7);
+        }
+
+        .carousel-caption {
+            top: 50%;
+            transform: translateY(-50%);
+            bottom: auto;
+            padding: 0 2rem;
+        }
+
+        .carousel-caption h1 {
+            font-size: 3.5rem;
             font-weight: 700;
             margin-bottom: 1.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .carousel-caption .lead {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .carousel-caption .btn {
+            font-size: 1.2rem;
+            padding: 0.75rem 2rem;
+            text-shadow: none;
+            transition: transform 0.3s ease;
+        }
+
+        .carousel-caption .btn:hover {
+            transform: translateY(-3px);
+        }
+
+        @media (max-width: 768px) {
+            .carousel-item {
+                height: 400px;
+            }
+
+            .carousel-caption h1 {
+                font-size: 2.5rem;
+            }
+
+            .carousel-caption .lead {
+                font-size: 1.2rem;
+            }
         }
 
         /* Categories */
@@ -69,12 +110,11 @@ $otherProducts = getOtherProductsFromDatabase();
         }
 
         .category-item {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
             text-align: center;
+            padding: 2rem;
+            background: var(--light-bg);
+            border-radius: 1rem;
+            transition: transform 0.3s ease;
         }
 
         .category-item:hover {
@@ -82,8 +122,36 @@ $otherProducts = getOtherProductsFromDatabase();
         }
 
         .category-item i {
-            font-size: 2rem;
+            font-size: 2.5rem;
             color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .category-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-bottom: 1rem;
+        }
+
+        .category-description {
+            color: #666;
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+
+        .no-categories {
+            grid-column: 1 / -1;
+            padding: 3rem;
+            text-align: center;
+            background: #f8f9fa;
+            border-radius: 1rem;
+        }
+
+        .no-categories i {
+            font-size: 3rem;
+            color: #dc3545;
             margin-bottom: 1rem;
         }
 
@@ -95,13 +163,29 @@ $otherProducts = getOtherProductsFromDatabase();
             margin: 2rem 0;
         }
 
+        /* Products grid */
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .col-md-3, .col-md-4, .col-sm-6 {
+            width: 100%;
+            padding: 0;
+        }
+
         .product-card {
             background: white;
             border-radius: 1rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease;
-            margin-bottom: 2rem;
+            margin-bottom: 0;
             overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         .product-card:hover {
@@ -116,6 +200,32 @@ $otherProducts = getOtherProductsFromDatabase();
 
         .product-info {
             padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-info h3 {
+            margin-bottom: 0.5rem;
+        }
+
+        .product-price {
+            margin-top: auto;
+            padding-top: 1rem;
+        }
+
+        .btn-primary {
+            margin-top: 1rem;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background-color: var(--accent-color);
+            color: white;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
         }
 
         .product-price {
@@ -124,12 +234,29 @@ $otherProducts = getOtherProductsFromDatabase();
             font-weight: 600;
         }
 
+        .original-price {
+            color: var(--text-secondary);
+            text-decoration: line-through;
+            font-size: 1rem;
+            margin-right: 0.5rem;
+        }
+
+        .final-price {
+            color: var(--success-color);
+        }
+
+        /* Other Products */
+        .other-products {
+            padding: 4rem 0;
+            background-color: var(--light-bg);
+        }
+
         /* Promotional Banners */
         .promotional-banners {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin: 3rem 0;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin: 4rem 0;
         }
 
         .banner {
@@ -200,14 +327,35 @@ $otherProducts = getOtherProductsFromDatabase();
     </style>
 </head>
 <body>
-    <!-- Hero Section -->
+    <!-- Hero Section with Slider -->
     <section class="hero-section">
-        <div class="container">
-            <div class="hero-content">
-                <h1>Welcome to Wattz Electronics</h1>
-                <p class="lead">Your One-Stop Shop for Quality Electronics</p>
-                <a href="products.php" class="btn btn-light btn-lg">Shop Now</a>
+        <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner">
+                <div class="carousel-item active">
+                    <img src="images/slide1.jpg" class="d-block w-100" alt="Welcome to Wattz Electronics">
+                    <div class="carousel-caption">
+                        <h1>Welcome to Wattz Electronics</h1>
+                        <p class="lead">Your One-Stop Shop for Quality Electronics</p>
+                        <a href="products.php" class="btn btn-light btn-lg">Shop Now</a>
+                    </div>
+                </div>
+                <div class="carousel-item">
+                    <img src="images/slide2.jpg" class="d-block w-100" alt="Quality Electronics">
+                    <div class="carousel-caption">
+                        <h1>Quality Electronics</h1>
+                        <p class="lead">Discover Our Wide Range of Products</p>
+                        <a href="products.php" class="btn btn-light btn-lg">Explore Now</a>
+                    </div>
+                </div>
             </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
         </div>
     </section>
 
@@ -218,13 +366,28 @@ $otherProducts = getOtherProductsFromDatabase();
             <p>Find what you need in our extensive collection</p>
         </div>
         <ul class="category-list">
-            <?php foreach ($categories as $category): ?>
-            <li class="category-item">
-                <i class="fas fa-plug"></i>
-                <h3><?php echo htmlspecialchars($category['name']); ?></h3>
-                <a href="category.php?id=<?php echo $category['id']; ?>" class="btn btn-primary">View Products</a>
-            </li>
-            <?php endforeach; ?>
+            <?php if (!empty($categories)): ?>
+                <?php foreach ($categories as $category): ?>
+                <li class="category-item">
+                    <?php if (!empty($category['image'])): ?>
+                        <img src="<?php echo htmlspecialchars($category['image']); ?>" alt="<?php echo htmlspecialchars($category['name']); ?>" class="category-image">
+                    <?php else: ?>
+                        <i class="fas fa-plug"></i>
+                    <?php endif; ?>
+                    <h3><?php echo htmlspecialchars($category['name']); ?></h3>
+                    <?php if (!empty($category['description'])): ?>
+                        <p class="category-description"><?php echo htmlspecialchars($category['description']); ?></p>
+                    <?php endif; ?>
+                    <a href="category.php?id=<?php echo $category['category_id']; ?>" class="btn btn-primary">View Products</a>
+                </li>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <li class="category-item no-categories">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <h3>No Categories Found</h3>
+                    <p class="text-muted">Please check back later for our product categories.</p>
+                </li>
+            <?php endif; ?>
         </ul>
     </section>
 
@@ -239,13 +402,23 @@ $otherProducts = getOtherProductsFromDatabase();
                 <?php foreach ($featuredProducts as $product): ?>
                 <div class="col-md-4 col-sm-6">
                     <div class="product-card">
-                        <img src="<?php echo !empty($product['image_url']) ? htmlspecialchars($product['image_url']) : 'uploads/default-product.jpg'; ?>" 
+                        <img src="<?php echo !empty($product['image_1']) ? htmlspecialchars($product['image_1']) : 'uploads/default-product.jpg'; ?>" 
                              alt="<?php echo htmlspecialchars($product['name']); ?>" 
                              class="product-image">
+
                         <div class="product-info">
+                            <span class="category-badge"><?php echo htmlspecialchars($product['category_name'] ?? 'Uncategorized'); ?></span>
                             <h3><?php echo htmlspecialchars($product['name']); ?></h3>
-                            <p class="product-price">KSH <?php echo number_format($product['price'], 2); ?></p>
-                            <a href="product.php?id=<?php echo $product['id']; ?>" class="btn btn-primary">View Details</a>
+                            <?php if ($product['discount'] > 0): ?>
+                                <p class="product-price">
+                                    <span class="original-price">KSH <?php echo number_format($product['price'], 2); ?></span>
+                                    <span class="final-price">KSH <?php echo number_format($product['final_price'], 2); ?></span>
+                                    <span class="discount-badge">-<?php echo number_format($product['discount']); ?>%</span>
+                                </p>
+                            <?php else: ?>
+                                <p class="product-price">KSH <?php echo number_format($product['price'], 2); ?></p>
+                            <?php endif; ?>
+                            <a href="product_details.php?id=<?php echo $product['product_id']; ?>" class="btn btn-primary">View Details</a>
                         </div>
                     </div>
                 </div>
@@ -258,11 +431,6 @@ $otherProducts = getOtherProductsFromDatabase();
     <section class="container">
         <div class="promotional-banners">
             <div class="banner">
-                <i class="fas fa-truck"></i>
-                <h3>Free Delivery</h3>
-                <p>On orders above KSH 5000</p>
-            </div>
-            <div class="banner">
                 <i class="fas fa-shield-alt"></i>
                 <h3>Secure Payment</h3>
                 <p>100% secure payment</p>
@@ -272,27 +440,49 @@ $otherProducts = getOtherProductsFromDatabase();
                 <h3>24/7 Support</h3>
                 <p>Dedicated support</p>
             </div>
+            <div class="banner">
+                <i class="fas fa-undo"></i>
+                <h3>Easy Returns</h3>
+                <p>14-day return policy</p>
+            </div>
         </div>
     </section>
 
     <!-- Other Products Section -->
-    <section class="container mt-5">
-        <h2>Other Products</h2>
-        <div class="row">
-            <?php foreach ($otherProducts as $product): ?>
-            <div class="col-md-3 mb-4">
-                <div class="card h-100">
-                    <img src="<?php echo htmlspecialchars($product['image_url']); ?>" class="card-img-top" alt="Product Image">
-                    <div class="card-body">
-                        <h5 class="card-title"><?php echo htmlspecialchars($product['name']); ?></h5>
-                        <p class="price">KSH. <?php echo htmlspecialchars($product['price']); ?></p>
-                        <a href="add_to_cart.php?product_id=<?php echo $product['id']; ?>" class="btn btn-primary">
-                            <i class="fas fa-shopping-cart me-2"></i>Add to Cart
-                        </a>
+    <section class="other-products">
+        <div class="container">
+            <div class="section-header">
+                <h2>More Products</h2>
+                <p>Discover our other amazing products</p>
+            </div>
+            <div class="row">
+                <?php foreach ($otherProducts as $product): ?>
+                <div class="col-md-3 col-sm-6 mb-4">
+                    <div class="product-card">
+                        <img src="<?php echo !empty($product['image_1']) ? htmlspecialchars($product['image_1']) : 'uploads/default-product.jpg'; ?>" 
+                             alt="<?php echo htmlspecialchars($product['name']); ?>" 
+                             class="product-image">
+                        <div class="product-info">
+                            <span class="category-badge"><?php echo htmlspecialchars($product['category_name'] ?? 'Uncategorized'); ?></span>
+                            <h3><?php echo htmlspecialchars($product['name']); ?></h3>
+                            <?php if ($product['discount'] > 0): ?>
+                                <p class="product-price">
+                                    <span class="original-price">KSH <?php echo number_format($product['price'], 2); ?></span>
+                                    <span class="final-price">KSH <?php echo number_format($product['final_price'], 2); ?></span>
+                                    <span class="discount-badge">-<?php echo number_format($product['discount']); ?>%</span>
+                                </p>
+                            <?php else: ?>
+                                <p class="product-price">KSH <?php echo number_format($product['price'], 2); ?></p>
+                            <?php endif; ?>
+                            <a href="product_details.php?id=<?php echo $product['product_id']; ?>" class="btn btn-primary">View Details</a>
+                        </div>
                     </div>
                 </div>
+                <?php endforeach; ?>
             </div>
-            <?php endforeach; ?>
+            <div class="text-center mt-4">
+                <a href="products.php" class="btn btn-lg btn-outline-primary">View All Products</a>
+            </div>
         </div>
     </section>
 

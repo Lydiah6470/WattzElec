@@ -6,12 +6,15 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+include 'includes/db.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
-
-    if ($product_id > 0 && isset($_SESSION['wishlist'])) {
-        // Remove the product ID from the wishlist
-        $_SESSION['wishlist'] = array_diff($_SESSION['wishlist'], [$product_id]);
+    $user_id = $_SESSION['user_id'];
+    if ($product_id > 0 && $user_id) {
+        // Remove from wishlist table in DB
+        $stmt = $conn->prepare("DELETE FROM wishlist WHERE user_id = ? AND product_id = ?");
+        $stmt->execute([$user_id, $product_id]);
     }
 }
 

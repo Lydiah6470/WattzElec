@@ -17,25 +17,33 @@ $total = 0;
 $product_ids = array_keys($cart);
 if (!empty($product_ids)) {
     $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
-    $query = "SELECT id, name, price, discount FROM products WHERE id IN ($placeholders)";
+    $query = "SELECT p.product_id, p.name, p.price, p.stock_quantity, p.discount,
+             CASE 
+                WHEN p.discount > 0 THEN p.price * (1 - p.discount/100)
+                ELSE p.price 
+             END as final_price
+             FROM products p WHERE p.product_id IN ($placeholders)";
     $stmt = $conn->prepare($query);
     $stmt->execute($product_ids);
 
-    // Fetch products as an associative array [id => row]
+    // Fetch products as an associative array [product_id => row]
     $products = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        $products[$row['id']] = $row;
+        $products[$row['product_id']] = $row;
     }
 
     // Calculate total amount
     foreach ($cart as $product_id => $item) {
         $product = $products[$product_id] ?? null;
         if ($product) {
-            $originalPrice = $product['price'];
-            $discountPercentage = $product['discount'] ?? 0;
-            $discountedPrice = $originalPrice - ($originalPrice * ($discountPercentage / 100));
             $quantity = intval($item['quantity']);
-            $total += $discountedPrice * $quantity;
+            // Check if quantity is more than available stock
+            if ($quantity > $product['stock_quantity']) {
+                $_SESSION['error_message'] = 'Sorry, only ' . $product['stock_quantity'] . ' units of "' . htmlspecialchars($product['name']) . '" are available.';
+                header('Location: cart.php');
+                exit;
+            }
+            $total += $product['final_price'] * $quantity;
         }
     }
 } else {
@@ -69,17 +77,33 @@ if (!empty($product_ids)) {
                             $product = $products[$product_id] ?? null;
                             if (!$product) continue;
 
-                            $originalPrice = $product['price'];
-                            $discountPercentage = $product['discount'] ?? 0;
-                            $discountedPrice = $originalPrice - ($originalPrice * ($discountPercentage / 100));
                             $quantity = intval($item['quantity']);
-                            $subtotal = $discountedPrice * $quantity;
+                            $subtotal = $product['final_price'] * $quantity;
                         ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($product['name']); ?></td>
-                                <td>KSH <?php echo number_format($discountedPrice, 2); ?></td>
-                                <td><?php echo $quantity; ?></td>
-                                <td>KSH <?php echo number_format($subtotal, 2); ?></td>
+                                <td><?= htmlspecialchars($product['name']) ?></td>
+                                <td>
+                                    <?php if ($product['discount'] > 0): ?>
+                                        <span class="text-decoration-line-through text-muted">
+                                            KSH <?= number_format($product['price'], 2) ?>
+                                        </span><br>
+                                        <span class="text-success fw-bold">
+                                            KSH <?= number_format($product['final_price'], 2) ?>
+                                        </span>
+                                        <span class="badge bg-danger">-<?= $product['discount'] ?>%</span>
+                                    <?php else: ?>
+                                        <span class="fw-bold">
+                                            KSH <?= number_format($product['final_price'], 2) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?= $quantity ?>
+                                    <?php if ($quantity > ($product['stock_quantity'] - 5)): ?>
+                                        <br><small class="text-danger">Only <?= $product['stock_quantity'] ?> left in stock!</small>
+                                    <?php endif; ?>
+                                </td>
+                                <td>KSH <?= number_format($subtotal, 2) ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -97,11 +121,11 @@ if (!empty($product_ids)) {
                 <h4>Shipping Details</h4>
                 <form method="POST" action="process_checkout.php">
                     <div class="mb-3">
-                        <label for="full_name" class="form-label">Full Name</label>
-                        <input type="text" name="full_name" id="full_name" class="form-control" required>
+                        <label for="recipient_name" class="form-label">Recipient Name</label>
+                        <input type="text" name="recipient_name" id="recipient_name" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label for="address" class="form-label">Address</label>
+                        <label for="address" class="form-label">Delivery Address</label>
                         <textarea name="address" id="address" class="form-control" rows="3" required></textarea>
                     </div>
                     <div class="mb-3">
@@ -109,15 +133,27 @@ if (!empty($product_ids)) {
                         <input type="text" name="city" id="city" class="form-control" required>
                     </div>
                     <div class="mb-3">
+                        <label for="country" class="form-label">Country</label>
+                        <input type="text" name="country" id="country" class="form-control" value="Kenya" required>
+                    </div>
+                    <div class="mb-3">
                         <label for="phone" class="form-label">Phone Number</label>
                         <input type="tel" name="phone" id="phone" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="shipping_method" class="form-label">Shipping Method</label>
+                        <select name="shipping_method" id="shipping_method" class="form-select" required>
+                            <option value="">Select Shipping Method</option>
+                            <option value="standard">Standard Delivery (5-7 days) - KSH 500</option>
+                            <option value="expedited">Expedited Delivery (2-3 days) - KSH 1,500</option>
+                        </select>
                     </div>
                     <h4 class="mt-4">Payment Method</h4>
                     <div class="mb-3">
                         <select name="payment_method" class="form-select" required>
                             <option value="">Select Payment Method</option>
-                            <option value="credit_card">Credit Card</option>
-                            <<option value="credit_card">M-pesa</option>
+                            <option value="mpesa">M-Pesa</option>
+                            <option value="credit_card">Credit/Debit Card</option>
                             <option value="cash_on_delivery">Cash on Delivery</option>
                         </select>
                     </div>

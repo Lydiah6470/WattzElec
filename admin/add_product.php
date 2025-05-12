@@ -8,11 +8,25 @@ session_start();
 include 'includes/header.php';
 include 'includes/db.php';
 
-// Fetch categories
-$categoriesQuery = "SELECT * FROM category ORDER BY name";
-$stmt = $conn->prepare($categoriesQuery);
-$stmt->execute();
-$categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Get subcategory from URL if provided
+$subcategory_id = isset($_GET['subcategory']) ? (int)$_GET['subcategory'] : 0;
+
+// If subcategory is provided, get its details and category
+$category_id = 0;
+$subcategory_name = '';
+if ($subcategory_id > 0) {
+    $stmt = $conn->prepare("
+        SELECT s.*, c.category_id, c.name as category_name 
+        FROM subcategories s 
+        JOIN category c ON s.category_id = c.category_id 
+        WHERE s.subcategory_id = ?");
+    $stmt->execute([$subcategory_id]);
+    $subcategory = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($subcategory) {
+        $category_id = $subcategory['category_id'];
+        $subcategory_name = $subcategory['name'];
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Collect and sanitize input
@@ -20,7 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = trim($_POST['description']);
     $price = floatval($_POST['price']);
     $discount = floatval($_POST['discount']);
-    $stock = intval($_POST['stock']);
+    $stock_quantity = intval($_POST['stock_quantity']);
+    $status = $_POST['status'];
     $subcategory_id = intval($_POST['subcategory_id']);
 
     // Handle image uploads
@@ -53,22 +68,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($error)) {
         // Insert product into database
         $stmt = $conn->prepare("
-            INSERT INTO products (name, description, price, discount, stock, subcategory_id, image_url, image_url_2, image_url_3)
-            VALUES (:name, :description, :price, :discount, :stock, :subcategory_id, :image_url, :image_url_2, :image_url_3)
+            INSERT INTO products (name, description, price, discount, stock_quantity, status, subcategory_id, image_1, image_2, image_3)
+            VALUES (:name, :description, :price, :discount, :stock_quantity, :status, :subcategory_id, :image_1, :image_2, :image_3)
         ");
 
         try {
-            $stmt->execute([
-                'name' => $name,
-                'description' => $description,
-                'price' => $price,
-                'discount' => $discount,
-                'stock' => $stock,
-                'subcategory_id' => $subcategory_id,
-                'image_url' => $image_urls[0],
-                'image_url_2' => $image_urls[1],
-                'image_url_3' => $image_urls[2]
-            ]);
+            // Prepare the image values
+            $image1 = $image_urls[0] ?? null;
+            $image2 = $image_urls[1] ?? null;
+            $image3 = $image_urls[2] ?? null;
+
+            // Bind all parameters
+            $stmt->bindParam(':name', $name);
+            $stmt->bindParam(':description', $description);
+            $stmt->bindParam(':price', $price);
+            $stmt->bindParam(':discount', $discount);
+            $stmt->bindParam(':stock_quantity', $stock_quantity);
+            $stmt->bindParam(':status', $status);
+            $stmt->bindParam(':subcategory_id', $subcategory_id);
+            $stmt->bindParam(':image_1', $image1);
+            $stmt->bindParam(':image_2', $image2);
+            $stmt->bindParam(':image_3', $image3);
+
+            // Execute the statement
+            $stmt->execute();
             header("Location: products.php?success=1");
             exit;
         } catch (PDOException $e) {
@@ -222,59 +245,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="form-group">
             <label class="form-label" for="discount">Discount (%)</label>
-            <input type="number" class="form-control" step="0.01" name="discount" id="discount" min="0" max="100" 
-                   value="<?php echo isset($_POST['discount']) ? htmlspecialchars($_POST['discount']) : '0'; ?>">
+            <input type="number" class="form-control" step="0.01" name="discount" id="discount" value="<?php echo isset($_POST['discount']) ? htmlspecialchars($_POST['discount']) : '0'; ?>">
         </div>
 
         <div class="form-group">
             <label class="form-label" for="stock">Stock Quantity</label>
-            <input type="number" class="form-control" name="stock" id="stock" min="0" required 
-                   value="<?php echo isset($_POST['stock']) ? htmlspecialchars($_POST['stock']) : '0'; ?>">
+            <input type="number" class="form-control" name="stock_quantity" id="stock_quantity" min="0" required 
+                   value="<?php echo isset($_POST['stock_quantity']) ? htmlspecialchars($_POST['stock_quantity']) : '0'; ?>">
         </div>
 
         <div class="form-group">
-            <label class="form-label" for="category">Category</label>
-            <select class="form-control" name="category" id="category" required onchange="loadSubcategories(this.value)">
-                <option value="">Select Category</option>
-                <?php foreach ($categories as $category): ?>
-                <option value="<?php echo $category['id']; ?>" 
-                        <?php echo (isset($_POST['category']) && $_POST['category'] == $category['id']) ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($category['name']); ?>
-                </option>
-                <?php endforeach; ?>
+            <label class="form-label" for="status">Status</label>
+            <select class="form-control" name="status" id="status" required>
+                <option value="in_stock" <?php echo (isset($_POST['status']) && $_POST['status'] == 'in_stock') ? 'selected' : ''; ?>>In Stock</option>
+                <option value="out_of_stock" <?php echo (isset($_POST['status']) && $_POST['status'] == 'out_of_stock') ? 'selected' : ''; ?>>Out of Stock</option>
+                <option value="discontinued" <?php echo (isset($_POST['status']) && $_POST['status'] == 'discontinued') ? 'selected' : ''; ?>>Discontinued</option>
             </select>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" for="subcategory_id">Subcategory</label>
-            <select class="form-control" name="subcategory_id" id="subcategory_id" required>
-                <option value="">Select Category First</option>
-            </select>
-        </div>
+        <input type="hidden" name="subcategory_id" value="<?php echo $subcategory_id; ?>">
+        <?php if ($subcategory_id > 0): ?>
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <input type="text" class="form-control" value="<?php echo htmlspecialchars($subcategory['category_name']); ?>" readonly>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Subcategory</label>
+                <input type="text" class="form-control" value="<?php echo htmlspecialchars($subcategory_name); ?>" readonly>
+            </div>
+        <?php endif; ?>
 
         <div class="form-group full-width">
-            <label class="form-label" for="description">Description</label>
-            <textarea class="form-control" name="description" id="description" rows="4" required><?php 
+            <label class="form-label" for="description">Product Details</label>
+            <small class="form-text text-muted">Enter product description, features, and technical details. You can include both general information and specifications.</small>
+            <textarea class="form-control" name="description" id="description" rows="6" required 
+                placeholder="Example:
+This LED bulb provides bright, energy-efficient lighting perfect for home or office use. Features adjustable brightness and long-lasting performance.
+
+Specifications:
+- Wattage: 9W
+- Voltage: 220-240V
+- Base Type: E27
+- Color Temperature: 6500K
+- Lifespan: 25000 hours
+- Dimensions: 60mm x 120mm"><?php 
                 echo isset($_POST['description']) ? htmlspecialchars($_POST['description']) : ''; 
             ?></textarea>
         </div>
 
         <div class="form-group">
-            <label class="form-label" for="image_1">Main Image</label>
+            <label class="form-label" for="image_1">Main Product Image</label>
             <input type="file" class="form-control" name="image_1" id="image_1" accept="image/*" required 
                    onchange="previewImage(this, 'preview1')">
             <div id="preview1" class="image-preview">No image selected</div>
         </div>
 
         <div class="form-group">
-            <label class="form-label" for="image_2">Secondary Image</label>
+            <label class="form-label" for="image_2">Secondary Image (Optional)</label>
             <input type="file" class="form-control" name="image_2" id="image_2" accept="image/*"
                    onchange="previewImage(this, 'preview2')">
             <div id="preview2" class="image-preview">No image selected</div>
         </div>
 
         <div class="form-group">
-            <label class="form-label" for="image_3">Additional Image</label>
+            <label class="form-label" for="image_3">Additional Image (Optional)</label>
             <input type="file" class="form-control" name="image_3" id="image_3" accept="image/*"
                    onchange="previewImage(this, 'preview3')">
             <div id="preview3" class="image-preview">No image selected</div>

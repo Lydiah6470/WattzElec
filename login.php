@@ -8,36 +8,59 @@ if (isset($_SESSION['user_id'])) {
 }
 
 // Handle login form submission
-$error = "";
+$error = [];
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
 
     // Validate input
-    if (empty($email) || empty($password)) {
-        $error = "Please provide both email and password.";
-    } else {
-        // Fetch user by email
-        require 'includes/db.php';
-        $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
+    if (empty($email)) {
+        $error[] = "Email address is required";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error[] = "Please enter a valid email address";
+    }
 
-        if ($user && password_verify($password, $user['password'])) {
-            // Set session variables
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['is_admin'] = $user['is_admin'] ?? 0;
+    if (empty($password)) {
+        $error[] = "Password is required";
+    }
 
-            // Redirect based on admin status
-            if ($_SESSION['is_admin'] == 1) {
-                header("Location: admin/dashboard.php");
-                exit;
+    if (empty($error)) {
+        try {
+            // Fetch user by email
+            require 'includes/db.php';
+            $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
+
+            if (!$user) {
+                $error[] = "No account found with this email address";
+            } elseif (!password_verify($password, $user['password'])) {
+                $error[] = "Incorrect password";
+                // Add brute force protection by waiting 1 second
+                sleep(1);
             } else {
-                header("Location: index.php");
-                exit;
+                // Debug information
+                error_log('Login successful for email: ' . $email);
+                error_log('User data: ' . print_r($user, true));
+                // Set session variables
+                $_SESSION['user_id'] = $user['user_id'];
+                $_SESSION['is_admin'] = $user['role'] == 'admin' ? 1 : 0;
+
+                // Redirect based on admin status
+                error_log('Session data: ' . print_r($_SESSION, true));
+                
+                if ($_SESSION['is_admin'] == 1) {
+                    error_log('Redirecting to admin dashboard');
+                    header("Location: admin/dashboard.php");
+                    exit();
+                } else {
+                    error_log('Redirecting to index');
+                    header("Location: index.php");
+                    exit();
+                }
             }
-        } else {
-            $error = "Invalid credentials";
+        } catch (Exception $e) {
+            $error[] = "An error occurred: " . $e->getMessage();
         }
     }
 }
@@ -49,7 +72,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <h2 class="form-heading">Login</h2>
     
     <?php if (!empty($error)): ?>
-        <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+        <div class="alert alert-danger">
+            <ul class="error-list">
+                <?php foreach ($error as $err): ?>
+                    <li><?= htmlspecialchars($err) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
     <?php endif; ?>
 
     <form method="POST" class="login-form">

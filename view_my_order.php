@@ -17,13 +17,12 @@ $order_id = $_GET['id'];
 $user_id = $_SESSION['user_id'];
 
 // Fetch order details
-$stmt = $conn->prepare("SELECT o.*, u.email, u.phone, u.address 
+$stmt = $conn->prepare("SELECT o.*, u.email 
     FROM orders o 
     JOIN users u ON o.user_id = u.id 
     WHERE o.id = ? AND o.user_id = ?");
-$stmt->bind_param("ii", $order_id, $user_id);
-$stmt->execute();
-$order = $stmt->get_result()->fetch_assoc();
+$stmt->execute([$order_id, $user_id]);
+$order = $stmt->fetch();
 
 if (!$order) {
     header('Location: my_orders.php');
@@ -35,9 +34,8 @@ $stmt = $conn->prepare("SELECT oi.*, p.name as product_name, p.image
     FROM order_items oi 
     JOIN products p ON oi.product_id = p.id 
     WHERE oi.order_id = ?");
-$stmt->bind_param("i", $order_id);
-$stmt->execute();
-$items = $stmt->get_result();
+$stmt->execute([$order_id]);
+$items = $stmt;
 
 $page_title = "Order Details #" . $order_id;
 include 'includes/header.php';
@@ -73,7 +71,7 @@ include 'includes/header.php';
                             <tbody>
                                 <?php 
                                 $total = 0;
-                                while ($item = $items->fetch_assoc()):
+                                while ($item = $items->fetch()):
                                     $item_total = $item['price'] * $item['quantity'];
                                     $total += $item_total;
                                 ?>
@@ -123,11 +121,7 @@ include 'includes/header.php';
                         <dt class="col-sm-4">Email:</dt>
                         <dd class="col-sm-8"><?php echo htmlspecialchars($order['email']); ?></dd>
 
-                        <dt class="col-sm-4">Phone:</dt>
-                        <dd class="col-sm-8"><?php echo htmlspecialchars($order['phone']); ?></dd>
 
-                        <dt class="col-sm-4">Address:</dt>
-                        <dd class="col-sm-8"><?php echo nl2br(htmlspecialchars($order['address'])); ?></dd>
                     </dl>
                 </div>
             </div>

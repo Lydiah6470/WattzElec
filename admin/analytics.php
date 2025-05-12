@@ -28,8 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_report'])) {
                 COUNT(*) AS total_sales,
                 SUM(CASE WHEN o.status = 'delivered' THEN 1 ELSE 0 END) AS total_delivered,
                 SUM(CASE WHEN o.status = 'delivered' THEN o.total_amount ELSE 0 END) AS total_revenue
-            FROM orders o 
-            WHERE o.created_at BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)
+            FROM user_order o 
+            WHERE o.order_date BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)
         ";
         $metricsStmt = $conn->prepare($metricsQuery);
         $metricsStmt->execute(['start_date' => $pdf_start_date, 'end_date' => $pdf_end_date]);
@@ -40,14 +40,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_report'])) {
         $topProductsQuery = "
             SELECT 
                 p.name, 
-                p.stock,
+                p.stock_quantity as stock,
                 SUM(oi.quantity) AS total_quantity,
                 SUM(oi.quantity * oi.price) AS total_revenue
             FROM order_items oi
-            JOIN products p ON oi.product_id = p.id
-            JOIN orders o ON oi.order_id = o.id
-            WHERE o.created_at BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)
-            GROUP BY p.id
+            JOIN products p ON oi.product_id = p.product_id
+            JOIN user_order o ON oi.order_id = o.order_id
+            WHERE o.order_date BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)
+            GROUP BY p.product_id
             ORDER BY total_quantity DESC
             LIMIT 10
         ";
@@ -56,10 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_report'])) {
         $pdfTopProducts = $topProductsStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $lowStockQuery = "
-            SELECT name, stock, price
+            SELECT name, stock_quantity as stock, price
             FROM products
-            WHERE stock <= 10
-            ORDER BY stock ASC
+            WHERE stock_quantity <= 10
+            ORDER BY stock_quantity ASC
             LIMIT 10
         ";
         $lowStockStmt = $conn->prepare($lowStockQuery);
@@ -72,9 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_report'])) {
             SELECT 
                 COUNT(DISTINCT o.user_id) as total_customers,
                 ROUND(AVG(o.total_amount), 2) as avg_order_value,
-                COUNT(o.id) / COUNT(DISTINCT o.user_id) as orders_per_customer
-            FROM orders o
-            WHERE o.created_at BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)
+                COUNT(o.order_id) / COUNT(DISTINCT o.user_id) as orders_per_customer
+            FROM user_order o
+            WHERE o.order_date BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)
         ";
         $customerMetricsStmt = $conn->prepare($customerMetricsQuery);
         $customerMetricsStmt->execute(['start_date' => $pdf_start_date, 'end_date' => $pdf_end_date]);
@@ -200,7 +200,7 @@ $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', s
 $report_type = isset($_GET['report_type']) ? $_GET['report_type'] : 'sales';
 
 // Base WHERE clause for date filtering
-$date_filter = "WHERE o.created_at BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)";
+$date_filter = "WHERE o.order_date BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)";
 
 // Initialize variables
 $metrics = $topProducts = $lowStockProducts = $customerMetrics = $dailyRevenue = [];
@@ -213,8 +213,8 @@ if ($report_type === 'sales' || $report_type === 'all') {
             COUNT(*) AS total_sales,
             SUM(CASE WHEN o.status = 'delivered' THEN 1 ELSE 0 END) AS total_delivered,
             SUM(CASE WHEN o.status = 'delivered' THEN o.total_amount ELSE 0 END) AS total_revenue
-        FROM orders o 
-        $date_filter
+        FROM user_order o 
+        WHERE o.order_date BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)
     ";
     $metricsStmt = $conn->prepare($metricsQuery);
     $metricsStmt->execute(['start_date' => $start_date, 'end_date' => $end_date]);
@@ -223,12 +223,12 @@ if ($report_type === 'sales' || $report_type === 'all') {
     // Daily Revenue Data
     $dailyRevenueQuery = "
         SELECT 
-            DATE(o.created_at) as date,
+            DATE(o.order_date) as date,
             COUNT(*) as total_orders,
             SUM(o.total_amount) as revenue
-        FROM orders o
-        $date_filter
-        GROUP BY DATE(o.created_at)
+        FROM user_order o
+        WHERE o.order_date BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)
+        GROUP BY DATE(o.order_date)
         ORDER BY date ASC
     ";
     $dailyRevenueStmt = $conn->prepare($dailyRevenueQuery);
@@ -241,14 +241,14 @@ if ($report_type === 'inventory' || $report_type === 'all') {
     $topProductsQuery = "
         SELECT 
             p.name, 
-            p.stock,
+            p.stock_quantity as stock,
             SUM(oi.quantity) AS total_quantity,
             SUM(oi.quantity * oi.price) AS total_revenue
         FROM order_items oi
-        JOIN products p ON oi.product_id = p.id
-        JOIN orders o ON oi.order_id = o.id
-        $date_filter
-        GROUP BY p.id
+        JOIN products p ON oi.product_id = p.product_id
+        JOIN user_order o ON oi.order_id = o.order_id
+        WHERE o.order_date BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)
+        GROUP BY p.product_id
         ORDER BY total_quantity DESC
         LIMIT 10
     ";
@@ -258,10 +258,10 @@ if ($report_type === 'inventory' || $report_type === 'all') {
 
     // Low Stock Products
     $lowStockQuery = "
-        SELECT name, stock, price
+        SELECT name, stock_quantity as stock, price
         FROM products
-        WHERE stock <= 10
-        ORDER BY stock ASC
+        WHERE stock_quantity <= 10
+        ORDER BY stock_quantity ASC
         LIMIT 10
     ";
     $lowStockStmt = $conn->prepare($lowStockQuery);
@@ -275,9 +275,9 @@ if ($report_type === 'customers' || $report_type === 'all') {
         SELECT 
             COUNT(DISTINCT o.user_id) as total_customers,
             ROUND(AVG(o.total_amount), 2) as avg_order_value,
-            COUNT(o.id) / COUNT(DISTINCT o.user_id) as orders_per_customer
-        FROM orders o
-        $date_filter
+            COUNT(o.order_id) / COUNT(DISTINCT o.user_id) as orders_per_customer
+        FROM user_order o
+        WHERE o.order_date BETWEEN :start_date AND DATE_ADD(:end_date, INTERVAL 1 DAY)
     ";
     $customerMetricsStmt = $conn->prepare($customerMetricsQuery);
     $customerMetricsStmt->execute(['start_date' => $start_date, 'end_date' => $end_date]);

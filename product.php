@@ -10,14 +10,19 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $per_page = 12;
 
 // Build the query
-$query = "SELECT p.*, c.name as category_name 
+$query = "SELECT p.*, c.name as category_name, s.name as subcategory_name,
+                 CASE 
+                     WHEN p.discount > 0 THEN p.price - (p.price * p.discount / 100)
+                     ELSE p.price
+                 END as final_price
           FROM products p 
-          LEFT JOIN category c ON p.category_id = c.id 
+          LEFT JOIN subcategories s ON p.subcategory_id = s.subcategory_id
+          LEFT JOIN category c ON s.category_id = c.category_id 
           WHERE 1=1";
 $params = [];
 
 if ($category_id) {
-    $query .= " AND p.category_id = :category_id";
+    $query .= " AND c.category_id = :category_id";
     $params[':category_id'] = $category_id;
 }
 
@@ -131,6 +136,27 @@ $categories = getCategoriesFromDatabase();
             color: var(--text-primary);
         }
 
+        .original-price {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            display: block;
+        }
+
+        .discount {
+            color: var(--danger-color);
+            font-size: 0.9rem;
+            margin-left: 0.5rem;
+        }
+
+        .final-price {
+            color: var(--primary-color);
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: block;
+            margin-top: 0.25rem;
+        }
+
         .filters {
             display: flex;
             flex-wrap: wrap;
@@ -224,20 +250,25 @@ $categories = getCategoriesFromDatabase();
             <div class="products-grid">
                 <?php foreach ($products as $product): ?>
                     <div class="product-card">
-                        <img src="<?= htmlspecialchars($product['image_url']) ?>" 
+                        <img src="<?= htmlspecialchars($product['image_1']) ?>" 
                              alt="<?= htmlspecialchars($product['name']) ?>" 
                              class="product-image">
                         <div class="product-info">
                             <span class="product-category">
-                                <?= htmlspecialchars($product['category_name']) ?>
+                                <?= htmlspecialchars($product['category_name']) ?> >
+                                <?= htmlspecialchars($product['subcategory_name']) ?>
                             </span>
                             <h3 class="product-name">
                                 <?= htmlspecialchars($product['name']) ?>
                             </h3>
                             <p class="product-price">
-                                KSh <?= number_format($product['price'], 2) ?>
+                                <?php if ($product['discount'] > 0): ?>
+                                    <span class="original-price">KSh <?= number_format($product['price'], 2) ?></span>
+                                    <span class="discount">-<?= $product['discount'] ?>%</span>
+                                <?php endif; ?>
+                                <span class="final-price">KSh <?= number_format($product['final_price'], 2) ?></span>
                             </p>
-                            <a href="product_details.php?id=<?= $product['id'] ?>" 
+                            <a href="product_details.php?id=<?= $product['product_id'] ?>" 
                                class="btn btn-primary">View Details</a>
                         </div>
                     </div>

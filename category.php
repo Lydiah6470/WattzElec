@@ -11,9 +11,9 @@ $price_min = isset($_GET['price_min']) ? (float)$_GET['price_min'] : 0;
 $price_max = isset($_GET['price_max']) ? (float)$_GET['price_max'] : PHP_FLOAT_MAX;
 
 // Fetch category details
-$categoryQuery = "SELECT * FROM category WHERE id = :id";
+$categoryQuery = "SELECT * FROM category WHERE category_id = :category_id";
 $categoryStmt = $conn->prepare($categoryQuery);
-$categoryStmt->execute(['id' => $category_id]);
+$categoryStmt->execute(['category_id' => $category_id]);
 $category = $categoryStmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$category) {
@@ -23,7 +23,8 @@ if (!$category) {
 
 // Build the products query with filters
 $query = "SELECT p.* FROM products p 
-          WHERE p.category_id = :category_id 
+          JOIN subcategories s ON p.subcategory_id = s.subcategory_id
+          WHERE s.category_id = :category_id 
           AND p.price >= :price_min 
           AND p.price <= :price_max";
 
@@ -51,9 +52,10 @@ $stmt->execute([
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get price range for this category
-$priceQuery = "SELECT MIN(price) as min_price, MAX(price) as max_price 
-               FROM products 
-               WHERE category_id = :category_id";
+$priceQuery = "SELECT MIN(p.price) as min_price, MAX(p.price) as max_price 
+               FROM products p
+               JOIN subcategories s ON p.subcategory_id = s.subcategory_id
+               WHERE s.category_id = :category_id";
 $priceStmt = $conn->prepare($priceQuery);
 $priceStmt->execute(['category_id' => $category_id]);
 $priceRange = $priceStmt->fetch(PDO::FETCH_ASSOC);
@@ -287,7 +289,7 @@ $priceRange = $priceStmt->fetch(PDO::FETCH_ASSOC);
                         <?php foreach ($products as $product): ?>
                         <div class="col-md-4 col-sm-6">
                             <div class="product-card">
-                                <img src="<?php echo !empty($product['image_url']) ? htmlspecialchars($product['image_url']) : 'uploads/default-product.jpg'; ?>" 
+                                <img src="<?php echo !empty($product['image_1']) ? htmlspecialchars($product['image_1']) : 'uploads/default-product.jpg'; ?>" 
                                      alt="<?php echo htmlspecialchars($product['name']); ?>" 
                                      class="product-image">
                                 <div class="product-info">
@@ -306,10 +308,10 @@ $priceRange = $priceStmt->fetch(PDO::FETCH_ASSOC);
                                     <?php
                                     $stockClass = '';
                                     $stockText = '';
-                                    if ($product['stock'] > 10) {
+                                    if ($product['stock_quantity'] > 10) {
                                         $stockClass = 'in-stock';
                                         $stockText = 'In Stock';
-                                    } elseif ($product['stock'] > 0) {
+                                    } elseif ($product['stock_quantity'] > 0) {
                                         $stockClass = 'low-stock';
                                         $stockText = 'Low Stock';
                                     } else {
@@ -322,11 +324,11 @@ $priceRange = $priceStmt->fetch(PDO::FETCH_ASSOC);
                                     </div>
                                     
                                     <div class="mt-3">
-                                        <a href="product_details.php?id=<?php echo $product['id']; ?>" class="btn btn-primary">
+                                        <a href="product_details.php?id=<?php echo $product['product_id']; ?>" class="btn btn-primary">
                                             View Details
                                         </a>
-                                        <?php if ($product['stock'] > 0): ?>
-                                        <a href="add_to_cart.php?product_id=<?php echo $product['id']; ?>" class="btn btn-outline-primary">
+                                        <?php if ($product['stock_quantity'] > 0): ?>
+                                        <a href="add_to_cart.php?product_id=<?php echo $product['product_id']; ?>" class="btn btn-outline-primary">
                                             <i class="fas fa-shopping-cart"></i> Add to Cart
                                         </a>
                                         <?php endif; ?>

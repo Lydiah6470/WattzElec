@@ -11,28 +11,28 @@ include 'includes/db.php';
 $user_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
 // Fetch user details
-$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+$stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
 $stmt->execute([$user_id]);
-$user = $stmt->fetch();
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$user) {
     die("User not found.");
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = trim($_POST['name']);
+    $username = trim($_POST['username']);
     $email = trim($_POST['email']);
     $password = trim($_POST['password']);
-    $is_admin = isset($_POST['is_admin']) ? 1 : 0;
+    $role = $_POST['role'];
 
     // Update password only if a new one is provided
     if (!empty($password)) {
         $password_hash = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $conn->prepare("UPDATE users SET name=?, email=?, password=?, is_admin=? WHERE id=?");
-        $stmt->execute([$name, $email, $password_hash, $is_admin, $user_id]);
+        $stmt = $conn->prepare("UPDATE users SET username=?, email=?, password=?, role=? WHERE user_id=?");
+        $stmt->execute([$username, $email, $password_hash, $role, $user_id]);
     } else {
-        $stmt = $conn->prepare("UPDATE users SET name=?, email=?, is_admin=? WHERE id=?");
-        $stmt->execute([$name, $email, $is_admin, $user_id]);
+        $stmt = $conn->prepare("UPDATE users SET username=?, email=?, role=? WHERE user_id=?");
+        $stmt->execute([$username, $email, $role, $user_id]);
     }
 
     header("Location: users.php");
@@ -45,13 +45,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <form method="POST" class="user-form">
         <div class="form-group">
-            <label for="name">Name:</label>
-            <input type="text" name="name" id="name" value="<?php echo htmlspecialchars($user['name']); ?>" required>
+            <label for="username">Full Name:</label>
+            <input type="text" name="username" id="username" value="<?php echo htmlspecialchars($user['username'] ?? ''); ?>" required>
         </div>
 
         <div class="form-group">
             <label for="email">Email:</label>
-            <input type="email" name="email" id="email" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+            <input type="email" name="email" id="email" value="<?php echo htmlspecialchars($user['email'] ?? ''); ?>" required>
         </div>
 
         <div class="form-group">
@@ -60,10 +60,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="form-group">
-            <label for="is_admin">Role:</label>
-            <select name="is_admin" id="is_admin" required>
-                <option value="1" <?php echo ($user['is_admin'] == 1) ? 'selected' : ''; ?>>Admin</option>
-                <option value="0" <?php echo ($user['is_admin'] == 0) ? 'selected' : ''; ?>>Customer</option>
+            <label for="role">Role:</label>
+            <select name="role" id="role" required>
+                <option value="admin" <?php echo ($user['role'] ?? 'customer') === 'admin' ? 'selected' : ''; ?>>Admin</option>
+                <option value="customer" <?php echo ($user['role'] ?? 'customer') === 'customer' ? 'selected' : ''; ?>>Customer</option>
             </select>
         </div>
 

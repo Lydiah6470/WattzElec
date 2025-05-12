@@ -19,13 +19,13 @@ if ($order_id === 0) {
 
 // Fetch order details
 $query = "
-    SELECT o.id AS order_id, o.total_amount, o.payment_method, o.payment_status, o.status, o.created_at,
-           u.name AS user_name, u.email AS user_email,
-           s.full_name AS shipping_name, s.address, s.city, s.phone
-    FROM orders o
-    JOIN users u ON o.user_id = u.id
-    LEFT JOIN shipping_detail s ON o.shipping_id = s.id
-    WHERE o.id = ?
+    SELECT o.order_id, o.total_amount, o.payment_method, o.payment_status, o.status, o.order_date,
+           u.username AS user_name, u.email AS user_email,
+           s.recipient_name AS shipping_name, s.address, s.city, s.phone
+    FROM user_order o
+    JOIN users u ON o.user_id = u.user_id
+    LEFT JOIN shipping_detail s ON o.shipping_id = s.shipping_id
+    WHERE o.order_id = ?
 ";
 $stmt = $conn->prepare($query);
 $stmt->execute([$order_id]);
@@ -41,7 +41,7 @@ if (!$order) {
 $itemsQuery = "
     SELECT p.name AS product_name, oi.quantity, oi.price 
     FROM order_items oi
-    JOIN products p ON oi.product_id = p.id
+    JOIN products p ON oi.product_id = p.product_id
     WHERE oi.order_id = ?
 ";
 $itemsStmt = $conn->prepare($itemsQuery);
@@ -344,7 +344,7 @@ $orderItems = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
                         </li>
                         <li class="info-item">
                             <span class="info-label">Order Date</span>
-                            <span class="info-value"><?php echo date('M j, Y H:i', strtotime($order['created_at'])); ?></span>
+                            <span class="info-value"><?php echo date('M j, Y H:i', strtotime($order['order_date'])); ?></span>
                         </li>
                     </ul>
                 </div>

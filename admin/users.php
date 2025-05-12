@@ -209,32 +209,28 @@ $users = $stmt->fetchAll();
                             <th>ID</th>
                             <th>User</th>
                             <th>Role</th>
-                            <th>Created</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($users as $user): ?>
                             <tr>
-                                <td>#<?php echo htmlspecialchars($user['id']); ?></td>
+                                <td>#<?php echo htmlspecialchars($user['user_id'] ?? ''); ?></td>
                                 <td>
                                     <div class="user-info">
-                                        <div class="user-name"><?php echo htmlspecialchars($user['name']); ?></div>
-                                        <div class="user-email"><?php echo htmlspecialchars($user['email']); ?></div>
+                                        <div class="user-name"><?php echo htmlspecialchars($user['username'] ?? ''); ?></div>
+                                        <div class="user-email"><?php echo htmlspecialchars($user['email'] ?? ''); ?></div>
                                     </div>
                                 </td>
                                 <td>
-                                    <span class="user-role <?php echo $user['is_admin'] ? 'role-admin' : 'role-customer'; ?>">
-                                        <?php echo $user['is_admin'] ? 'Admin' : 'Customer'; ?>
+                                    <span class="user-role <?php echo ($user['role'] ?? 'customer') === 'admin' ? 'role-admin' : 'role-customer'; ?>">
+                                        <?php echo ucfirst($user['role'] ?? 'customer'); ?>
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="user-date"><?php echo date('M j, Y', strtotime($user['created_at'])); ?></span>
-                                </td>
-                                <td>
                                     <div class="actions">
-                                        <a href="edit_user.php?id=<?php echo $user['id']; ?>" class="btn btn-edit">Edit</a>
-                                        <a href="delete_user.php?id=<?php echo $user['id']; ?>" 
+                                        <a href="edit_user.php?id=<?php echo htmlspecialchars($user['user_id'] ?? ''); ?>" class="btn btn-edit">Edit</a>
+                                        <a href="delete_user.php?id=<?php echo htmlspecialchars($user['user_id'] ?? ''); ?>" 
                                            class="btn btn-delete" 
                                            onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.')">
                                             Delete

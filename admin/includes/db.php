@@ -1,10 +1,12 @@
 <?php
 // Database configuration
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'Wattzelec'); // Updated database name
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_CHARSET', 'utf8mb4');
+if (!defined('DB_HOST')) {
+    define('DB_HOST', 'localhost');
+    define('DB_NAME', 'wattzelec');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+    define('DB_CHARSET', 'utf8mb4');
+}
 
 // Enable error reporting
 ini_set('display_errors', 1);
